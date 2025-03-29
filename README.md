@@ -48,6 +48,7 @@ python posture_monitor.py
 
 ### 配置参数
 | 参数名称 |	默认值 |	说明 |
+|-----|-----|-----|
 |OCCLUSION_FRAMES_THRESHOLD	| 4 | 触发遮挡报警的连续帧数 |
 |CLEAR_FRAMES_THRESHOLD	| 3	| 恢复正常检测的连续帧数 |
 |HEAD_ANGLE_THRESHOLD |	50°	| 头部前倾报警阈值 |
