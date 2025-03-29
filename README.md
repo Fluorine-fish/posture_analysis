@@ -23,20 +23,16 @@ pip install opencv-python mediapipe numpy
 ```
 
 Linux系统摄像头权限配置
-bash
-复制
-
+``` bash
 sudo usermod -aG video $USER  # 将当前用户加入video组
 sudo reboot  # 重启生效
-
-使用说明
+```
+### 使用说明
 快速启动
-bash
-复制
-
+```bash 
 python posture_monitor.py
-
-界面说明
+```
+### 界面说明
 
 界面示意图
 
@@ -50,30 +46,28 @@ python posture_monitor.py
 
     调试信息：帧计数器与系统状态
 
-配置参数
-参数名称	默认值	说明
-OCCLUSION_FRAMES_THRESHOLD	4	触发遮挡报警的连续帧数
-CLEAR_FRAMES_THRESHOLD	3	恢复正常检测的连续帧数
-HEAD_ANGLE_THRESHOLD	50°	头部前倾报警阈值
-VISIBILITY_THRESHOLD	0.5	关键点可见性阈值
-SET_MIN_DETECTION_CONFIDENCE	0.8	姿势检测置信度
-SET_MIN_TRACKING_CONFIDENCE	0.2	姿势跟踪置信度
-技术细节
-核心算法
+### 配置参数
+| 参数名称 |	默认值 |	说明 |
+|OCCLUSION_FRAMES_THRESHOLD	| 4 | 触发遮挡报警的连续帧数 |
+|CLEAR_FRAMES_THRESHOLD	| 3	| 恢复正常检测的连续帧数 |
+|HEAD_ANGLE_THRESHOLD |	50°	| 头部前倾报警阈值 |
+|VISIBILITY_THRESHOLD |	0.5	| 关键点可见性阈值 |
+|SET_MIN_DETECTION_CONFIDENCE | 0.8 | 姿势检测置信度 |
+|SET_MIN_TRACKING_CONFIDENCE | 0.2 | 姿势跟踪置信度 |
+### 技术细节 核心算法
 
     头部角度计算：基于肩部中点与鼻尖的向量夹角
-    math
-    复制
+```    math
 
     θ = arctan(Δx/Δy) × (180/π)
-
+```
     遮挡检测：综合评估以下关键点可见性：
 
         双肩（LEFT_SHOULDER, RIGHT_SHOULDER）
 
         面部（NOSE, LEFT_EYE, RIGHT_EYE）
 
-性能优化
+### 性能优化
 
     多分辨率处理（1280×720输入 → 640×360输出）
 
@@ -81,18 +75,17 @@ SET_MIN_TRACKING_CONFIDENCE	0.2	姿势跟踪置信度
 
     异步状态跟踪机制
 
-常见问题
+### 常见问题
 摄像头无法识别
 
     检查设备连接状态
 
     尝试手动指定摄像头索引：
-    python
-    复制
-
+``` python
     cap = cv2.VideoCapture(0)  # 修改0为实际设备号
+```
 
-检测不准确
+### 检测不准确
 
     调整HEAD_ANGLE_THRESHOLD参数
 
@@ -100,9 +93,9 @@ SET_MIN_TRACKING_CONFIDENCE	0.2	姿势跟踪置信度
 
     保持与摄像头1-2米的距离
 
-依赖安装失败
+### 依赖安装失败
 
-### 使用清华镜像源加速安装
+使用清华镜像源加速安装
 ``` bash
 pip install -i https://pypi.tuna.tsinghua.edu.cn/simple [package_name]
 ```
