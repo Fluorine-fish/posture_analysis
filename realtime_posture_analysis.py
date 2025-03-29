@@ -3,16 +3,21 @@ import mediapipe as mp
 import numpy as np
 import math
 import os
+import time
+from collections import deque
 
-os.environ['GLOG_minloglevel'] = '2'  # 抑制MediaPipe日志
+os.environ['GLOG_minloglevel'] = '2'
 
 # 配置参数
-OCCLUSION_FRAMES_THRESHOLD = 4      # 连续4帧遮挡才触发
-CLEAR_FRAMES_THRESHOLD = 3          # 连续3帧正常才恢复检测
-VISIBILITY_THRESHOLD = 0.5          # 关键点可见性阈值
-HEAD_ANGLE_THRESHOLD = 50           # 低头判定阈值（度）
-SET_MIN_DETECTION_CONFIDENCE = 0.8  # 检测置信度
-SET_MIN_TRACKING_CONFIDENCE = 0.2   # 跟踪置信度
+OCCLUSION_FRAMES_THRESHOLD = 4
+CLEAR_FRAMES_THRESHOLD = 3
+VISIBILITY_THRESHOLD = 0.5
+HEAD_ANGLE_THRESHOLD = 50
+SET_MIN_DETECTION_CONFIDENCE = 0.8
+SET_MIN_TRACKING_CONFIDENCE = 0.2
+
+# 性能监控参数
+FPS_WINDOW_SIZE = 10  # 帧率计算窗口大小
 
 def check_occlusion(landmarks):
     """检测面部和肩部遮挡情况"""
@@ -104,6 +109,11 @@ def realtime_pose_estimation():
         min_detection_confidence=SET_MIN_DETECTION_CONFIDENCE,
         min_tracking_confidence=SET_MIN_TRACKING_CONFIDENCE
     )
+
+    # 性能监控变量
+    frame_times = deque(maxlen=FPS_WINDOW_SIZE)  # 总帧时间队列
+    process_times = deque(maxlen=FPS_WINDOW_SIZE) # 处理时间队列
+    last_frame_time = time.time()
     
     # 状态跟踪变量
     occlusion_counter = 0
@@ -113,10 +123,19 @@ def realtime_pose_estimation():
     
     try:
         while cap.isOpened():
+            # 帧接收开始时间
+            frame_start_time = time.time()
+            
             ret, frame = cap.read()
             if not ret:
                 print("视频流中断")
                 break
+
+            # 帧接收结束时间
+            frame_receive_time = time.time() - frame_start_time
+            
+            # 处理开始时间
+            process_start_time = time.time()
 
             # 调整分辨率并转换颜色空间
             resized_frame = cv2.resize(frame, (640, 360))
@@ -128,8 +147,8 @@ def realtime_pose_estimation():
             current_occluded = False
             occlusion_status = "Clear"
             display_text = "Initializing..."
-            status_color = (255, 255, 255)  # 默认白色
-            
+            status_color = (255, 255, 255)
+
             if results.pose_landmarks:
                 # 检测当前帧遮挡状态
                 current_occluded, occlusion_status = check_occlusion(
@@ -183,7 +202,13 @@ def realtime_pose_estimation():
                     display_text = f"OCCLUSION: {occlusion_status}"
                     if last_valid_angle is not None:
                         display_text += f" | Last: {last_valid_angle:.1f}°"
-                
+
+                # 记录处理时间
+                process_time = time.time() - process_start_time
+                process_times.append(process_time)
+                frame_times.append(time.time() - last_frame_time)
+                last_frame_time = time.time()
+
                 # 绘制状态信息
                 state_text = f"State: {'Occluded' if final_occlusion else 'Tracking'}"
                 cv2.putText(resized_frame, state_text, (10, 30),
@@ -195,7 +220,24 @@ def realtime_pose_estimation():
                 # 无人检测状态
                 cv2.putText(resized_frame, "No Person Detected", (10, 30),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-            
+
+            # 计算性能指标
+            camera_fps = 1/np.mean(frame_times) if frame_times else 0
+            process_fps = 1/np.mean(process_times) if process_times else 0
+            avg_receive_time = np.mean(frame_times)*1000 if frame_times else 0
+            avg_process_time = np.mean(process_times)*1000 if process_times else 0
+
+            # 绘制性能监控面板
+            perf_y_start = 90
+            cv2.putText(resized_frame, f"Camera FPS: {camera_fps:.1f}", (10, perf_y_start),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 255), 1)
+            cv2.putText(resized_frame, f"Process FPS: {process_fps:.1f}", (10, perf_y_start+20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 255), 1)
+            cv2.putText(resized_frame, f"Frame Receive: {frame_receive_time*1000:.1f}ms", (10, perf_y_start+40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 255), 1)
+            cv2.putText(resized_frame, f"Frame Process: {avg_process_time:.1f}ms", (10, perf_y_start+60),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 255), 1)
+
             # 显示调试信息
             debug_info = f"Occ: {occlusion_counter}/{OCCLUSION_FRAMES_THRESHOLD} Clear: {clear_counter}/{CLEAR_FRAMES_THRESHOLD}"
             cv2.putText(resized_frame, debug_info, (10, resized_frame.shape[0]-10),
